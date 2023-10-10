@@ -33,7 +33,7 @@ public static class QueryUtils
     {
         foreach (var symbol in parameterSymbols)
             if(symbol.Type.Name is not "Entity") // Prevent entity being added to the type array
-                sb.AppendLine($"ref var {symbol.Name.ToLower()} = ref Unsafe.Add(ref {symbol.Type.Name.ToLower()}FirstElement, entityIndex);");
+                sb.AppendLine($"ref var {symbol.Name.ToLower()} = ref global::System.Runtime.CompilerServices.Unsafe.Add(ref {symbol.Type.Name.ToLower()}FirstElement, entityIndex);");
 
         return sb;
     }
@@ -64,11 +64,11 @@ public static class QueryUtils
     {
         if (parameterSymbols.Count == 0)
         {
-            sb.Append("Array.Empty<ComponentType>()");
+            sb.Append("global::System.Array.Empty<global::Arch.Core.Utils.ComponentType>()");
             return sb;
         }
 
-        sb.Append("new ComponentType[]{");
+        sb.Append("new global::Arch.Core.Utils.ComponentType[]{");
         
         foreach (var symbol in parameterSymbols)
             if(symbol.Name is not "Entity") // Prevent entity being added to the type array
@@ -94,7 +94,7 @@ public static class QueryUtils
         foreach (var parameter in parameterSymbols)
         {
             if (parameter.GetAttributes().Any(attributeData => attributeData.AttributeClass.Name.Contains("Data")))
-                sb.Append($"{CommonUtils.RefKindToString(parameter.RefKind)} {parameter.Type} {parameter.Name.ToLower()},");
+                sb.Append($"{CommonUtils.RefKindToString(parameter.RefKind)} global::{parameter.Type} {parameter.Name.ToLower()},");
         }
         sb.Length--;
         return sb;
@@ -240,18 +240,10 @@ public static class QueryUtils
 
         var template = 
             $$"""
-            using System;
-            using System.Runtime.CompilerServices;
-            using System.Runtime.InteropServices;
-            using Arch.Core;
-            using Arch.Core.Extensions;
-            using Arch.Core.Utils;
-            using ArrayExtensions = CommunityToolkit.HighPerformance.ArrayExtensions;
-            using Component = Arch.Core.Utils.Component;
             {{(!queryMethod.IsGlobalNamespace ? $"namespace {queryMethod.Namespace} {{" : "")}}
                 partial class {{queryMethod.ClassName}}{
                     
-                    private {{staticModifier}} QueryDescription {{queryMethod.MethodName}}_QueryDescription = new QueryDescription{
+                    private {{staticModifier}} global::Arch.Core.QueryDescription {{queryMethod.MethodName}}_QueryDescription = new global::Arch.Core.QueryDescription{
                         All = {{allTypeArray}},
                         Any = {{anyTypeArray}},
                         None = {{noneTypeArray}},
@@ -259,10 +251,10 @@ public static class QueryUtils
                     };
 
                     private {{staticModifier}} bool _{{queryMethod.MethodName}}_Initialized;
-                    private {{staticModifier}} Query _{{queryMethod.MethodName}}_Query;
+                    private {{staticModifier}} global::Arch.Core.Query _{{queryMethod.MethodName}}_Query;
 
-                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                    public {{staticModifier}} void {{queryMethod.MethodName}}Query(World world {{data}}){
+                    [global::System.Runtime.CompilerServices.MethodImpl(global::System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+                    public {{staticModifier}} void {{queryMethod.MethodName}}Query(global::Arch.Core.World world {{data}}){
                      
                         if(!_{{queryMethod.MethodName}}_Initialized){
                             _{{queryMethod.MethodName}}_Query = world.Query(in {{queryMethod.MethodName}}_QueryDescription);
@@ -277,7 +269,7 @@ public static class QueryUtils
 
                             foreach(var entityIndex in chunk)
                             {
-                                {{(queryMethod.IsEntityQuery ? $"ref readonly var {queryMethod.EntityParameter.Name.ToLower()} = ref Unsafe.Add(ref entityFirstElement, entityIndex);" : "")}}
+                                {{(queryMethod.IsEntityQuery ? $"ref readonly var {queryMethod.EntityParameter.Name.ToLower()} = ref global::System.Runtime.CompilerServices.Unsafe.Add(ref entityFirstElement, entityIndex);" : "")}}
                                 {{getComponents}}
                                 {{queryMethod.MethodName}}({{insertParams}});
                             }
@@ -350,14 +342,12 @@ public static class QueryUtils
         var methodCalls = new StringBuilder().CallMethods(baseSystem.QueryMethods);
         var template =
             $$"""
-            using System.Runtime.CompilerServices;
-            using System.Runtime.InteropServices;
             using {{baseSystem.GenericTypeNamespace}};
             {{(baseSystem.Namespace != string.Empty ? $"namespace {baseSystem.Namespace} {{" : "")}}
                 partial class {{baseSystem.Name}}{
                         
-                    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                    public override void Update(in {{baseSystem.GenericType.ToDisplayString()}} data){
+                    [global::System.Runtime.CompilerServices.MethodImpl(global::System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+                    public override void Update(in global::{{baseSystem.GenericType.ToDisplayString()}} data){
                         {{methodCalls}}
                     }
                 }

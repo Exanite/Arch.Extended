@@ -34,7 +34,7 @@ public static class GenericAttributesUtils
         var genericsToTypeArray = new StringBuilder().GenericsToTypeArray(amount);
         
         var template = $$"""
-        public class {{name}}Attribute<{{generics}}> : {{parent}}Attribute
+        public class {{name}}Attribute<{{generics}}> : global::Arch.System.{{parent}}Attribute
         {
             public {{name}}Attribute(): base({{genericsToTypeArray}}){}
         }
