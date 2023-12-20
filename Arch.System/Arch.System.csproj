@@ -32,4 +32,8 @@ Before, Update and AfterUpdate pass the data directly to the method now. </Packa
         <UnityPublish>true</UnityPublish>
     </PropertyGroup>
 
+    <ItemGroup>
+        <ProjectReference Include="..\Arch.System.SourceGenerator\Arch.System.SourceGenerator.csproj" OutputItemType="Analyzer"/>
+    </ItemGroup>
+
 </Project>

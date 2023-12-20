@@ -1,5 +1,8 @@
 ﻿namespace Arch.System;
 
+[global::Arch.System.GenerateGenericAttributes]
+internal class GenerateGenericAttributesAttribute : global::System.Attribute {}
+
 /// <summary>
 ///     Marks a method to generate a high performance query for it. 
 /// </summary>

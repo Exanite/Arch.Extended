@@ -17,24 +17,32 @@ public class QueryGenerator : IIncrementalGenerator
     {
         //if (!Debugger.IsAttached) Debugger.Launch();
 
-        // Register the generic attributes 
-        var attributes = $$"""
-            namespace Arch.System.SourceGenerator
-            {
-            #if NET7_0_OR_GREATER
-                {{new StringBuilder().AppendGenericAttributes("All", "All", 25)}}
-                {{new StringBuilder().AppendGenericAttributes("Any", "Any", 25)}}
-                {{new StringBuilder().AppendGenericAttributes("None", "None", 25)}}
-                {{new StringBuilder().AppendGenericAttributes("Exclusive", "Exclusive", 25)}}
-            #endif
-            }
-        """;
-        context.RegisterPostInitializationOutput(ctx => ctx.AddSource("Attributes.g.cs", SourceText.From(attributes, Encoding.UTF8)));
+        // Find classes marked with [GenerateGenericAttributes] - Should be only one
+        IncrementalValuesProvider<ClassDeclarationSyntax> attributeClassDeclarations = context.SyntaxProvider.CreateSyntaxProvider(
+            static (s, _) => s is ClassDeclarationSyntax { AttributeLists.Count: > 0 },
+            static (ctx, _) => GetSymbolIfAttributeof<ClassDeclarationSyntax>(ctx, "Arch.System.GenerateGenericAttributesAttribute")
+        ).Where(static c => c is not null)!; // filter out attributed classes that we don't care about
+        context.RegisterSourceOutput(attributeClassDeclarations, static (spc, source) =>
+        {
+            var attributes = $$"""
+               namespace Arch.System.SourceGenerator
+               {
+               #if NET7_0_OR_GREATER
+                   {{new StringBuilder().AppendGenericAttributes("All", "All", 25)}}
+                   {{new StringBuilder().AppendGenericAttributes("Any", "Any", 25)}}
+                   {{new StringBuilder().AppendGenericAttributes("None", "None", 25)}}
+                   {{new StringBuilder().AppendGenericAttributes("Exclusive", "Exclusive", 25)}}
+               #endif
+               }
+           """;
+
+            spc.AddSource("Accessors.g.cs", attributes);
+        });
         
         // Do a simple filter for methods marked with update
         IncrementalValuesProvider<MethodDeclarationSyntax> methodDeclarations = context.SyntaxProvider.CreateSyntaxProvider(
                  static (s, _) => s is MethodDeclarationSyntax { AttributeLists.Count: > 0 },
-                 static (ctx, _) => GetMethodSymbolIfAttributeof(ctx, "Arch.System.QueryAttribute")
+                 static (ctx, _) => GetSymbolIfAttributeof<MethodDeclarationSyntax>(ctx, "Arch.System.QueryAttribute")
         ).Where(static m => m is not null)!; // filter out attributed methods that we don't care about
 
         // Combine the selected enums with the `Compilation`
@@ -63,24 +71,24 @@ public class QueryGenerator : IIncrementalGenerator
     /// <param name="context">Its <see cref="GeneratorSyntaxContext"/>.</param>
     /// <param name="name">The attributes name.</param>
     /// <returns></returns>
-    private static MethodDeclarationSyntax? GetMethodSymbolIfAttributeof(GeneratorSyntaxContext context, string name)
+    private static T? GetSymbolIfAttributeof<T>(GeneratorSyntaxContext context, string name) where T : MemberDeclarationSyntax
     {
         // we know the node is a EnumDeclarationSyntax thanks to IsSyntaxTargetForGeneration
-        var enumDeclarationSyntax = (MethodDeclarationSyntax)context.Node;
+        var syntax = (T)context.Node;
 
         // loop through all the attributes on the method
-        foreach (var attributeListSyntax in enumDeclarationSyntax.AttributeLists)
+        foreach (var attributeListSyntax in syntax.AttributeLists)
         {
             foreach (var attributeSyntax in attributeListSyntax.Attributes)
             {
                 if (ModelExtensions.GetSymbolInfo(context.SemanticModel, attributeSyntax).Symbol is not IMethodSymbol attributeSymbol) continue;
-                
+
                 var attributeContainingTypeSymbol = attributeSymbol.ContainingType;
                 var fullName = attributeContainingTypeSymbol.ToDisplayString();
 
                 // Is the attribute the [EnumExtensions] attribute?
                 if (fullName != name) continue;
-                return enumDeclarationSyntax;
+                return syntax;
             }
         }
 
