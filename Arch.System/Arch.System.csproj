@@ -34,4 +34,8 @@ Some other small improvements.</PackageReleaseNotes>
         <UnityPublish>true</UnityPublish>
     </PropertyGroup>
 
+    <ItemGroup>
+        <ProjectReference Include="..\Arch.System.SourceGenerator\Arch.System.SourceGenerator.csproj" OutputItemType="Analyzer"/>
+    </ItemGroup>
+
 </Project>
